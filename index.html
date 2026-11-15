@@ -214,11 +214,28 @@
           </div>
           <i data-lucide="chevron-down" id="chevron-ac" class="w-4 h-4 text-slate-400 transition-transform duration-200"></i>
         </button>
-        <div id="content-ac" class="hidden pt-2 pb-2 pl-11 space-y-2">
-          <select id="filter_ac_select" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
-            <option value="">Tüm Uçaklar (40 Uçak)</option>
-          </select>
-          <div class="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1" id="quickAcChips"></div>
+        <div id="content-ac" class="hidden pt-2.5 pb-2 pl-11 space-y-2.5">
+          <!-- Multi-select controls -->
+          <div class="flex items-center justify-between gap-2">
+            <div class="relative flex-1">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+              <input type="text" id="acFilterSearch" placeholder="Uçak ara (Örn: JSE)..." class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+            </div>
+            <div class="flex items-center space-x-1 shrink-0">
+              <button type="button" id="selectAllAcsBtn" class="px-2 py-1 text-emerald-600 hover:bg-emerald-50 font-bold rounded-lg transition text-[11px]">Tümünü Seç</button>
+              <button type="button" id="clearAllAcsBtn" class="px-2 py-1 text-slate-500 hover:bg-slate-100 font-semibold rounded-lg transition text-[11px]">Temizle</button>
+            </div>
+          </div>
+          
+          <div class="text-[11px] text-slate-500 flex items-center justify-between px-0.5">
+            <span>Birden fazla uçak seçebilirsiniz:</span>
+            <span id="acSelectedCountLabel" class="font-bold text-emerald-700">0 / 40 seçildi</span>
+          </div>
+
+          <!-- Multi-select Chips Grid -->
+          <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1 p-1 bg-slate-50/70 rounded-xl border border-slate-200/60" id="quickAcChips">
+            <!-- Populated dynamically -->
+          </div>
         </div>
       </div>
 
@@ -358,12 +375,14 @@
     let hasMore = true;
     let materialsData = [];
     let currentAbortController = null; // Prevents race conditions
+    let allAircrafts = [];
+    let selectedAcs = new Set(); // Multi-select AC set
 
     // Filter State
     let filters = {
       pn: '',
       pn_description: '',
-      ac: '',
+      ac: [],
       task_card: '',
       task_card_desc: '',
       emp_name: '',
@@ -418,37 +437,78 @@
       }
     }
 
-    // Load Distinct Aircrafts for AC Dropdown & Chips
+    // Load Distinct Aircrafts for AC Multi-Select Chips
     async function loadAircraftList() {
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/distinct_aircrafts?select=*`, { headers: HEADERS });
         if (!res.ok) return;
         const data = await res.json();
-        const select = document.getElementById('filter_ac_select');
-        const chipsContainer = document.getElementById('quickAcChips');
-        
-        select.innerHTML = '<option value="">Tüm Uçaklar (40 Uçak)</option>';
-        chipsContainer.innerHTML = '';
-
-        data.forEach(item => {
-          const opt = document.createElement('option');
-          opt.value = item.ac;
-          opt.textContent = item.ac;
-          select.appendChild(opt);
-
-          const chip = document.createElement('button');
-          chip.type = 'button';
-          chip.className = 'px-2 py-0.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 transition text-slate-600 border border-slate-200';
-          chip.textContent = item.ac;
-          chip.onclick = () => {
-            select.value = item.ac;
-            updateFilterInputsBadge();
-          };
-          chipsContainer.appendChild(chip);
-        });
+        allAircrafts = data.map(item => item.ac);
+        renderAircraftChips();
       } catch (e) {
         console.error('Error loading aircraft list:', e);
       }
+    }
+
+    function renderAircraftChips(filterText = '') {
+      const chipsContainer = document.getElementById('quickAcChips');
+      if (!chipsContainer) return;
+      chipsContainer.innerHTML = '';
+      
+      const filtered = allAircrafts.filter(ac => ac.toLowerCase().includes(filterText.toLowerCase()));
+      
+      if (filtered.length === 0) {
+        chipsContainer.innerHTML = '<span class="text-xs text-slate-400 p-2">Eşleşen uçak bulunamadı.</span>';
+        return;
+      }
+
+      filtered.forEach(ac => {
+        const isSelected = selectedAcs.has(ac);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = isSelected 
+          ? 'px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white border border-emerald-600 shadow-sm transition active:scale-95 flex items-center space-x-1' 
+          : 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-200 transition active:scale-95 shadow-xs flex items-center space-x-1';
+        
+        chip.innerHTML = isSelected 
+          ? `<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i><span>${ac}</span>` 
+          : `<span>${ac}</span>`;
+        
+        chip.onclick = () => {
+          if (selectedAcs.has(ac)) {
+            selectedAcs.delete(ac);
+          } else {
+            selectedAcs.add(ac);
+          }
+          updateAcSelectionUI();
+        };
+        chipsContainer.appendChild(chip);
+      });
+      lucide.createIcons();
+    }
+
+    function updateAcSelectionUI() {
+      const searchVal = document.getElementById('acFilterSearch') ? document.getElementById('acFilterSearch').value : '';
+      renderAircraftChips(searchVal);
+      const count = selectedAcs.size;
+      const label = document.getElementById('acSelectedCountLabel');
+      if (label) {
+        label.textContent = `${count} / ${allAircrafts.length} seçildi`;
+      }
+      
+      const badge = document.getElementById('badge-ac');
+      if (badge) {
+        if (count === 0) {
+          badge.classList.add('hidden');
+        } else if (count === 1) {
+          badge.textContent = Array.from(selectedAcs)[0];
+          badge.classList.remove('hidden');
+        } else {
+          badge.textContent = `${count} Uçak`;
+          badge.classList.remove('hidden');
+        }
+      }
+      updateFilterInputsBadge();
     }
 
     // Build PostgREST Query URL with Lightning-Fast GIN Trigram Search
@@ -468,8 +528,13 @@
       if (filters.pn_description) {
         query += `&pn_description=ilike.*${encodeURIComponent(filters.pn_description.trim())}*`;
       }
-      if (filters.ac) {
-        query += `&ac=eq.${encodeURIComponent(filters.ac.trim())}`;
+      if (filters.ac && filters.ac.length > 0) {
+        if (filters.ac.length === 1) {
+          query += `&ac=eq.${encodeURIComponent(filters.ac[0])}`;
+        } else {
+          const list = filters.ac.map(a => encodeURIComponent(a)).join(',');
+          query += `&ac=in.(${list})`;
+        }
       }
       if (filters.task_card) {
         query += `&task_card=ilike.*${encodeURIComponent(filters.task_card.trim())}*`;
@@ -591,20 +656,18 @@
           : 'bg-amber-50 text-amber-700 border-amber-200';
 
         card.innerHTML = `
-          <!-- Top Row: Icon, Title, Status Badge -->
+          <!-- Top Row: Airplane Icon, Single AC Title, Status Badge -->
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center space-x-3 min-w-0">
-              <div class="w-11 h-11 rounded-xl bg-slate-800 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
-                ${item.ac || 'AC'}
+              <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/80 shadow-xs">
+                <i data-lucide="plane" class="w-5 h-5 -rotate-45"></i>
               </div>
               <div class="min-w-0">
                 <div class="flex items-center space-x-2">
                   <h3 class="font-bold text-slate-900 text-base leading-tight truncate">${item.ac || 'Genel Depo'}</h3>
                   <span class="text-[11px] font-semibold text-slate-400">#${item.id}</span>
                 </div>
-                <p class="text-xs font-semibold text-blue-600 truncate mt-0.5">
-                  <span class="text-slate-500 font-normal">Task Card:</span> ${item.task_card || 'Belirtilmemiş'}
-                </p>
+                <p class="text-[11px] text-slate-400 mt-0.5 truncate">${item.location ? item.location : 'Depo Kaydı'}</p>
               </div>
             </div>
             <span class="px-2.5 py-1 text-[11px] font-bold rounded-full border ${statusClass} shrink-0">
@@ -617,7 +680,6 @@
             <div class="flex items-baseline space-x-2">
               <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">PN:</span>
               <span class="text-sm font-extrabold text-slate-900 tracking-wide font-mono">${item.pn || '-'}</span>
-              <span class="text-xs text-slate-500 font-medium ml-auto">${item.qty || 1} ${item.stock_uom || 'EA'}</span>
             </div>
             <p class="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
               ${item.pn_description || 'Parça açıklaması bulunmuyor.'}
@@ -629,18 +691,6 @@
                 <span class="font-bold text-blue-900">Task Card Tanımı:</span> ${item.task_card_desc}
               </p>
             </div>` : ''}
-          </div>
-
-          <!-- Bottom Metadata Row -->
-          <div class="mt-3 flex flex-wrap items-center justify-between gap-y-1.5 text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-            <div class="flex items-center space-x-1 truncate max-w-[200px]" title="${item.emp_name || ''}">
-              <i data-lucide="user" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
-              <span class="truncate">${item.emp_name || 'Personel bilgisi yok'}</span>
-            </div>
-            <div class="flex items-center space-x-1 shrink-0">
-              <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i>
-              <span>${formattedDate}</span>
-            </div>
           </div>
         `;
 
@@ -748,7 +798,7 @@
     function applyFilters() {
       filters.pn = document.getElementById('filter_pn').value.trim();
       filters.pn_description = document.getElementById('filter_pn_description').value.trim();
-      filters.ac = document.getElementById('filter_ac_select').value.trim();
+      filters.ac = Array.from(selectedAcs);
       filters.task_card = document.getElementById('filter_task_card').value.trim();
       filters.task_card_desc = document.getElementById('filter_task_card_desc').value.trim();
       filters.emp_name = document.getElementById('filter_emp_name').value.trim();
@@ -765,7 +815,11 @@
     function resetFilters() {
       document.getElementById('filter_pn').value = '';
       document.getElementById('filter_pn_description').value = '';
-      document.getElementById('filter_ac_select').value = '';
+      selectedAcs.clear();
+      if (document.getElementById('acFilterSearch')) {
+        document.getElementById('acFilterSearch').value = '';
+      }
+      updateAcSelectionUI();
       document.getElementById('filter_task_card').value = '';
       document.getElementById('filter_task_card_desc').value = '';
       document.getElementById('filter_emp_name').value = '';
@@ -776,7 +830,7 @@
       filters = {
         pn: '',
         pn_description: '',
-        ac: '',
+        ac: [],
         task_card: '',
         task_card_desc: '',
         emp_name: '',
@@ -793,10 +847,10 @@
     // Count Active Filters and Update Badges
     function updateFilterInputsBadge() {
       let count = 0;
-      const keys = ['pn', 'pn_description', 'ac', 'task_card', 'task_card_desc', 'emp_name'];
+      const keys = ['pn', 'pn_description', 'task_card', 'task_card_desc', 'emp_name'];
       
       keys.forEach(k => {
-        const val = (k === 'ac' ? document.getElementById('filter_ac_select').value : document.getElementById(`filter_${k}`).value).trim();
+        const val = document.getElementById(`filter_${k}`).value.trim();
         const badge = document.getElementById(`badge-${k}`);
         if (val) {
           count++;
@@ -806,6 +860,16 @@
           badge.classList.add('hidden');
         }
       });
+
+      // AC badge check
+      const badgeAc = document.getElementById('badge-ac');
+      if (selectedAcs.size > 0) {
+        count++;
+        badgeAc.textContent = selectedAcs.size === 1 ? Array.from(selectedAcs)[0] : `${selectedAcs.size} Uçak`;
+        badgeAc.classList.remove('hidden');
+      } else {
+        badgeAc.classList.add('hidden');
+      }
 
       const d1 = document.getElementById('filter_date_start').value;
       const d2 = document.getElementById('filter_date_end').value;
@@ -844,7 +908,17 @@
       if (filters.quickSearch) addPill('Arama', filters.quickSearch, () => { filters.quickSearch = ''; quickSearchInput.value = ''; fetchMaterials(true); updatePillsBar(); });
       if (filters.pn) addPill('PN', filters.pn, () => { filters.pn = ''; document.getElementById('filter_pn').value = ''; applyFilters(); });
       if (filters.pn_description) addPill('Tanım', filters.pn_description, () => { filters.pn_description = ''; document.getElementById('filter_pn_description').value = ''; applyFilters(); });
-      if (filters.ac) addPill('AC', filters.ac, () => { filters.ac = ''; document.getElementById('filter_ac_select').value = ''; applyFilters(); });
+      if (filters.ac && filters.ac.length > 0) {
+        const text = filters.ac.length === 1 
+          ? filters.ac[0] 
+          : `${filters.ac[0]}, ${filters.ac[1]}${filters.ac.length > 2 ? ` (+${filters.ac.length - 2})` : ''}`;
+        addPill('AC', text, () => {
+          filters.ac = [];
+          selectedAcs.clear();
+          updateAcSelectionUI();
+          applyFilters();
+        });
+      }
       if (filters.task_card) addPill('Task Card', filters.task_card, () => { filters.task_card = ''; document.getElementById('filter_task_card').value = ''; applyFilters(); });
       if (filters.task_card_desc) addPill('TC Tanım', filters.task_card_desc, () => { filters.task_card_desc = ''; document.getElementById('filter_task_card_desc').value = ''; applyFilters(); });
       if (filters.emp_name) addPill('Personel', filters.emp_name, () => { filters.emp_name = ''; document.getElementById('filter_emp_name').value = ''; applyFilters(); });
@@ -899,6 +973,30 @@
           quickSearchBar.classList.add('hidden');
         }
       };
+
+      // AC Multi-select Search and Control Buttons
+      const acFilterSearch = document.getElementById('acFilterSearch');
+      if (acFilterSearch) {
+        acFilterSearch.addEventListener('input', (e) => {
+          renderAircraftChips(e.target.value.trim());
+        });
+      }
+
+      const selectAllAcsBtn = document.getElementById('selectAllAcsBtn');
+      if (selectAllAcsBtn) {
+        selectAllAcsBtn.onclick = () => {
+          allAircrafts.forEach(ac => selectedAcs.add(ac));
+          updateAcSelectionUI();
+        };
+      }
+
+      const clearAllAcsBtn = document.getElementById('clearAllAcsBtn');
+      if (clearAllAcsBtn) {
+        clearAllAcsBtn.onclick = () => {
+          selectedAcs.clear();
+          updateAcSelectionUI();
+        };
+      }
 
       let debounceTimer = null;
       quickSearchInput.addEventListener('input', (e) => {
