@@ -380,7 +380,14 @@
     let hasMore = true;
     let materialsData = [];
     let currentAbortController = null; // Prevents race conditions
-    let allAircrafts = [];
+    const DEFAULT_AIRCRAFTS = [
+      'TC-JOA', 'TC-JOB', 'TC-JOD', 'TC-JOE', 'TC-JOF', 'TC-JOG', 'TC-JOH', 'TC-JOI', 
+      'TC-JOJ', 'TC-JOK', 'TC-JOL', 'TC-JOM', 'TC-JOO', 'TC-JOU', 'TC-JOV', 'TC-JOY', 
+      'TC-JOZ', 'TC-JSA', 'TC-JSB', 'TC-JSC', 'TC-JSD', 'TC-JSE', 'TC-JSF', 'TC-JSG', 
+      'TC-JSH', 'TC-JSI', 'TC-JSJ', 'TC-JSK', 'TC-JSL', 'TC-JSM', 'TC-JSN', 'TC-JSO', 
+      'TC-JSP', 'TC-JSR', 'TC-JSS', 'TC-JST', 'TC-JSU', 'TC-JSV', 'TC-JSY', 'TC-JSZ'
+    ];
+    let allAircrafts = [...DEFAULT_AIRCRAFTS];
     let selectedAcs = new Set(); // Multi-select AC set
 
     // Filter State
@@ -415,7 +422,8 @@
     document.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
       setupEventListeners();
-      await loadAircraftList();
+      renderAircraftChips(); // Render default 40 aircrafts instantly!
+      await loadAircraftList(); // Refresh from DB if any updates
       fetchMaterials(true);
     });
 
@@ -448,10 +456,14 @@
         const res = await fetch(`${SUPABASE_URL}/rest/v1/distinct_aircrafts?select=*`, { headers: HEADERS });
         if (!res.ok) return;
         const data = await res.json();
-        allAircrafts = data.map(item => item.ac);
-        renderAircraftChips();
+        if (Array.isArray(data) && data.length > 0) {
+          const fetchedAcs = data.map(item => item.ac).filter(Boolean);
+          allAircrafts = Array.from(new Set([...DEFAULT_AIRCRAFTS, ...fetchedAcs])).sort();
+          const searchVal = document.getElementById('acFilterSearch') ? document.getElementById('acFilterSearch').value : '';
+          renderAircraftChips(searchVal);
+        }
       } catch (e) {
-        console.error('Error loading aircraft list:', e);
+        console.warn('Distinct aircrafts API warning (using default list):', e);
       }
     }
 
@@ -460,10 +472,18 @@
       if (!chipsContainer) return;
       chipsContainer.innerHTML = '';
       
-      const filtered = allAircrafts.filter(ac => ac.toLowerCase().includes(filterText.toLowerCase()));
+      const cleanFilter = (filterText || '').trim().toLowerCase();
+      const filtered = cleanFilter 
+        ? allAircrafts.filter(ac => ac.toLowerCase().includes(cleanFilter))
+        : allAircrafts;
       
+      const label = document.getElementById('acSelectedCountLabel');
+      if (label) {
+        label.textContent = `${selectedAcs.size} / ${allAircrafts.length} seçildi`;
+      }
+
       if (filtered.length === 0) {
-        chipsContainer.innerHTML = '<span class="text-xs text-slate-400 p-2">Eşleşen uçak bulunamadı.</span>';
+        chipsContainer.innerHTML = '<span class="text-xs text-slate-400 p-2 text-center w-full block">Eşleşen uçak bulunamadı.</span>';
         return;
       }
 
@@ -472,8 +492,8 @@
         const chip = document.createElement('button');
         chip.type = 'button';
         chip.className = isSelected 
-          ? 'px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white border border-emerald-600 shadow-sm transition active:scale-95 flex items-center space-x-1' 
-          : 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-200 transition active:scale-95 shadow-xs flex items-center space-x-1';
+          ? 'px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white border border-emerald-600 shadow-sm transition active:scale-95 flex items-center space-x-1 shrink-0' 
+          : 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-200 transition active:scale-95 shadow-xs flex items-center space-x-1 shrink-0';
         
         chip.innerHTML = isSelected 
           ? `<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i><span>${ac}</span>` 
@@ -655,29 +675,16 @@
           formattedDate = d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
 
-        const isClosed = (item.wo_status || '').toUpperCase() === 'CLOSED';
-        const statusClass = isClosed 
-          ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-          : 'bg-amber-50 text-amber-700 border-amber-200';
-
         card.innerHTML = `
-          <!-- Top Row: Airplane Icon, Single AC Title, Status Badge -->
-          <div class="flex items-start justify-between gap-3">
+          <!-- Top Row: Airplane Icon and AC Title -->
+          <div class="flex items-center justify-between gap-3">
             <div class="flex items-center space-x-3 min-w-0">
               <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/80 shadow-xs">
                 <i data-lucide="plane" class="w-5 h-5 -rotate-45"></i>
               </div>
-              <div class="min-w-0">
-                <div class="flex items-center space-x-2">
-                  <h3 class="font-bold text-slate-900 text-base leading-tight truncate">${item.ac || 'Genel Depo'}</h3>
-                  <span class="text-[11px] font-semibold text-slate-400">#${item.id}</span>
-                </div>
-                <p class="text-[11px] text-slate-400 mt-0.5 truncate">${item.location ? item.location : 'Depo Kaydı'}</p>
-              </div>
+              <h3 class="font-bold text-slate-900 text-base leading-tight truncate">${item.ac || 'Genel Depo'}</h3>
             </div>
-            <span class="px-2.5 py-1 text-[11px] font-bold rounded-full border ${statusClass} shrink-0">
-              ${item.wo_status || 'OPEN'}
-            </span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 shrink-0"></i>
           </div>
 
           <!-- Middle: PN and Description -->
