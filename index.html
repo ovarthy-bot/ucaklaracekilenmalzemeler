@@ -347,7 +347,12 @@
       <div class="bg-slate-900 text-white px-5 py-4 flex items-center justify-between">
         <div>
           <span class="text-xs uppercase tracking-wider text-slate-400 font-bold" id="modalAcLocation"></span>
-          <h3 class="text-lg font-bold" id="modalPn">PN Details</h3>
+          <div class="flex items-center space-x-2 mt-0.5">
+            <h3 class="text-lg font-bold font-mono tracking-wide" id="modalPn">PN Details</h3>
+            <button id="modalCopyPnBtn" class="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition active:scale-90" title="PN Kopyala">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>
         <button id="closeDetailModal" class="p-1 hover:bg-slate-800 rounded-full text-slate-300">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -677,9 +682,13 @@
 
           <!-- Middle: PN and Description -->
           <div class="mt-3 pt-2.5 border-t border-slate-100">
-            <div class="flex items-baseline space-x-2">
+            <div class="flex items-center space-x-2">
               <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">PN:</span>
-              <span class="text-sm font-extrabold text-slate-900 tracking-wide font-mono">${item.pn || '-'}</span>
+              <span class="text-sm font-extrabold text-slate-900 tracking-wide font-mono select-all">${item.pn || '-'}</span>
+              ${item.pn ? `
+              <button type="button" class="copy-pn-btn p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition active:scale-90 flex items-center justify-center shrink-0" title="PN Kopyala">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              </button>` : ''}
             </div>
             <p class="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
               ${item.pn_description || 'Parça açıklaması bulunmuyor.'}
@@ -693,6 +702,15 @@
             </div>` : ''}
           </div>
         `;
+
+        // Copy PN button listener (stop propagation so card doesn't open modal)
+        const copyBtn = card.querySelector('.copy-pn-btn');
+        if (copyBtn) {
+          copyBtn.onclick = (e) => {
+            e.stopPropagation();
+            copyToClipboard(item.pn, copyBtn);
+          };
+        }
 
         card.onclick = () => showDetailModal(item);
         fragment.appendChild(card);
@@ -773,8 +791,52 @@
         </div>` : ''}
       `;
 
+      // Copy PN in detail modal
+      const modalCopyBtn = document.getElementById('modalCopyPnBtn');
+      if (modalCopyBtn) {
+        modalCopyBtn.onclick = (e) => {
+          e.stopPropagation();
+          copyToClipboard(item.pn, modalCopyBtn);
+        };
+      }
+
       modal.classList.remove('hidden');
       lucide.createIcons();
+    }
+
+    // Clipboard Copy Helper with Visual Feedback
+    async function copyToClipboard(text, btnElement) {
+      if (!text || text === '-') return;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const textArea = document.createElement("textarea");
+          textArea.value = text;
+          textArea.style.position = "fixed";
+          textArea.style.left = "-999999px";
+          textArea.style.top = "-999999px";
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          textArea.remove();
+        }
+
+        if (btnElement) {
+          const originalHTML = btnElement.innerHTML;
+          btnElement.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600 stroke-[3]"></i>`;
+          btnElement.classList.add('text-emerald-600', 'bg-emerald-50');
+          lucide.createIcons();
+          setTimeout(() => {
+            btnElement.innerHTML = originalHTML;
+            btnElement.classList.remove('text-emerald-600', 'bg-emerald-50');
+            lucide.createIcons();
+          }, 1500);
+        }
+      } catch (e) {
+        console.error('Copy failed:', e);
+      }
     }
 
     // Bottom Sheet Management
