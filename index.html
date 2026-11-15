@@ -232,6 +232,12 @@
             <span id="acSelectedCountLabel" class="font-bold text-emerald-700">0 / 40 seçildi</span>
           </div>
 
+          <!-- Uçak tipi (motor/tip grubu) seçimi -->
+          <div class="space-y-1">
+            <span class="text-[11px] text-slate-500 px-0.5">Uçak tipine göre seç:</span>
+            <div class="flex flex-wrap gap-1.5" id="acTypeChips"></div>
+          </div>
+
           <!-- Multi-select Chips Grid -->
           <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1 p-1 bg-slate-50/70 rounded-xl border border-slate-200/60" id="quickAcChips">
             <!-- Populated dynamically -->
@@ -387,7 +393,154 @@
       'TC-JSH', 'TC-JSI', 'TC-JSJ', 'TC-JSK', 'TC-JSL', 'TC-JSM', 'TC-JSN', 'TC-JSO', 
       'TC-JSP', 'TC-JSR', 'TC-JSS', 'TC-JST', 'TC-JSU', 'TC-JSV', 'TC-JSY', 'TC-JSZ'
     ];
-    let allAircrafts = [...DEFAULT_AIRCRAFTS];
+    // Uçak tipi eşleşmeleri (kaynak: TK UÇAKLARI MOTOR TİPLERİ.xlsx)
+    const AC_TYPE_MAP = {
+      "Airbus A330": [
+        "TC-LOE", "TC-JIZ", "TC-ANK", "TC-GVC", "TC-LOM", "TC-JOO", "TC-LON", "TC-LOG", "TC-LOF", "TC-LOD",
+        "TC-LOC", "TC-LOB", "TC-LOA", "TC-JND", "TC-JOL", "TC-JNO", "TC-JOB", "TC-JNT", "TC-JIR", "TC-JOU",
+        "TC-JOV", "TC-JOE", "TC-JOY", "TC-JIO", "TC-JDP", "TC-JNA", "TC-JDR", "TC-LNE", "TC-JNP", "TC-JNR",
+        "TC-JNS", "TC-JNJ", "TC-JNZ", "TC-JNE", "TC-JCI", "TC-JOI", "TC-LNF", "TC-JNI", "TC-JNB", "TC-JNC",
+        "TC-JIP", "TC-JOD", "TC-JDO", "TC-LNG", "TC-JOA", "TC-LNC", "TC-JOJ", "TC-JOF", "TC-JNM", "TC-JNK",
+        "TC-JNN", "TC-LOH", "TC-JIT", "TC-JIS", "TC-TUR", "TC-JOZ", "TC-LND", "TC-JOK", "TC-JOH", "TC-JNH",
+        "TC-JNL", "TC-JDS", "TC-JOG", "TC-JIL", "TC-JIM", "TC-JIN", "TC-LNA", "TC-LNB", "TC-LOI", "TC-JOM",
+        "TC-LOJ", "TC-LOK", "TC-LOL", "2-PAOK", "2-RLAZ", "2-RLBA", "5A-LAR", "5A-ONQ", "5A-ONR", "9H-PAX",
+        "A330-CF6", "A7-ACS", "A7-AEN", "AP-BMI", "AP-BMJ", "AP-BMK", "AP-BML", "AP-BNF", "CS-TCE", "CS-TQP",
+        "EC-JQG", "EC-MNK", "EC-NUL", "F-GZCI", "F-HXLF", "JY-JVB", "LZ-ONE", "M-ABLV", "M-ABLW", "MSN1361",
+        "N810CM", "N812CM", "NATSG-2", "T7-TAY", "TC-AGD", "TC-AGF", "TC-AGL", "TC-MCE", "VP-BUM", "YI-AQY",
+        "YU-ARA", "9M-MUC", "A330-PW", "D-ALAA", "D-ALAB", "EI-GCZ", "F-GOTO", "F-OFDF", "HL7792", "LZ-AWY",
+        "LZ-AWZ", "OK-YBA", "TC-GRA", "TC-OCA", "TC-OCC", "TC-OCD", "TC-OCE", "TC-OCF", "UR-WRQ", "VP-BUA",
+        "VP-BUB", "VP-BUT", "VP-BYU", "VP-BYV", "VT-VJO", "5A-OSA", "9H-GKL", "9H-PTP", "9K-APB", "A330-TRENT",
+        "A4O-DF", "A4O-DG", "A4O-DH", "A4O-DI", "A4O-DJ", "A7-AEP", "A7-AEQ", "A7-AER", "EC-NZJ", "EI-FLC",
+        "EI-FSE", "F-GRSQ", "F-HSKY", "F-HXXL", "F-HZEN", "F-WTAG", "G-VGEM", "G-VINE", "HB-JHC", "HB-JHD",
+        "HB-JHE", "HB-JHF", "HB-JHG", "HB-JHI", "HB-JHK", "HB-JHL", "HS-LAH", "HS-LAI", "HS-LAJ", "HZ-AQ11",
+        "HZ-AQ13", "HZ-AQ14", "HZ-AQ20", "HZ-AQ21", "HZ-AQ22", "HZ-AQ23", "HZ-AQ29", "HZ-AQ30", "HZ-AQC", "HZ-AQE",
+        "HZ-AQF", "HZ-AQH", "HZ-NE22", "HZ-NE23", "JU-1400", "JY-JVA", "LN-RKO", "LN-RKT", "LN-RKU", "MSN 0356",
+        "MSN1400", "MSN349", "MSN879", "N280AV", "N349UK", "N803CM", "N804CM", "OCB", "OE-IDU", "OE-IIU",
+        "OE-IIV", "OE-LDJ", "OY-VKF", "PK-GHA", "PK-GHC", "PK-GHD", "PK-GHE", "PK-GHF", "PK-GHG", "PK-GPE",
+        "PK-GPF", "PK-GPL", "PK-GPM", "PK-GPO", "PK-GPT", "PK-GPU", "PK-GPV", "PK-GPW", "PK-GPX", "PK-GPY",
+        "PK-GPZ", "PK-GYA", "PK-GYC", "S2-ALA", "S2-ALB", "SU-ALC", "T7-MMM", "T7-ULS", "TC-GOL", "TC-MCM",
+        "TC-MCN", "TC-MCO", "TC-MCP", "TC-MCU", "TC-MCZ", "TC-NYA", "TC-NYB", "TC-NYP", "TC-OCB", "TC-OCG",
+        "TC-OCH", "TC-OCI", "TC-OCJ", "TC-OCK", "TC-OCL", "TC-OCM", "TC-OCN", "TC-OCO", "TC-OCS", "TC-OCV",
+        "TS-IFM", "TS-IFN", "VP-BUC", "VP-CAI", "VP-CJQ", "VP-CPJ", "VP-CSE", "VQ-BSO", "VQ-BYZ", "YU-ARB",
+        "YU-ARC",
+      ],
+      "Airbus A319/A320/A321": [
+        "TC-LUS", "TC-LUH", "TC-LUG", "TC-LUF", "TC-LUD", "TC-LBC", "TC-JTY", "TC-JTV", "TC-JPZ", "TC-JLT",
+        "TC-JRI", "TC-JRM", "TC-JRT", "TC-JSC", "TC-JTF", "TC-JTG", "TC-JSM", "TC-JTH", "TC-JTR", "TC-JRD",
+        "TC-JRK", "TC-JLY", "TC-JRY", "TC-JRE", "TC-JPS", "TC-JTI", "TC-JTP", "TC-JTD", "TC-JTL", "TC-JRJ",
+        "TC-JRS", "TC-JMH", "TC-JPI", "TC-JSS", "TC-JLZ", "TC-JPJ", "TC-JML", "TC-JRR", "TC-JPK", "TC-JSZ",
+        "TC-JRF", "TC-JRG", "TC-JRU", "TC-JSA", "TC-JTA", "TC-JRC", "TC-JTK", "TC-JPL", "TC-JSO", "TC-JPM",
+        "TC-JPP", "TC-JPT", "TC-JSV", "TC-JSU", "TC-JPH", "TC-JSJ", "TC-JRB", "TC-JSR", "TC-JSD", "TC-JSE",
+        "TC-JTN", "TC-JTJ", "TC-JSK", "TC-JSL", "TC-JPR", "TC-JRA", "TC-JRZ", "TC-JPN", "TC-JSY", "TC-JMI",
+        "TC-JSB", "TC-JSF", "TC-JSG", "TC-JTE", "TC-JLS", "TC-JLV", "TC-JTM", "TC-JRN", "TC-JTO", "TC-JST",
+        "TC-JSP", "TC-JLU", "TC-JRL", "TC-JMJ", "TC-JSI", "TC-JRO", "TC-JRV", "TC-JRP", "TC-JMK", "TC-JRH",
+        "TC-JSN", "TC-LUZ", "TC-LUY", "TC-LUV", "TC-LUU", "TC-LUR", "TC-LUP", "TC-LUO", "TC-LUN", "TC-LUM",
+        "TC-LUL", "TC-LUK", "TC-LUJ", "TC-LUI", "TC-LUE", "TC-LUC", "TC-LUB", "TC-LUA", "TC-LTZ", "TC-LTY",
+        "TC-LTV", "TC-LTU", "TC-LTT", "TC-LTS", "TC-LTR", "TC-LTP", "TC-LTO", "TC-LTN", "TC-LTM", "TC-LTL",
+        "TC-LTK", "TC-LTJ", "TC-LTI", "TC-LTH", "TC-LTG", "TC-LTF", "TC-LTE", "TC-LTD", "TC-LTC", "TC-LTB",
+        "TC-LTA", "TC-LPN", "TC-LPJ", "TC-LPI", "TC-LPH", "TC-LPF", "TC-LPE", "TC-LPD", "TC-LPC", "TC-LPB",
+        "TC-LPA", "TC-LBH", "TC-LBG", "TC-LBF", "TC-LBB", "TC-LBA", "TC-LBE", "TC-LBD", "TC-JTU", "TC-JTT",
+        "TC-JTS", "ZA-MMK", "ZA-ASM", "TC-LSK", "TC-LSO", "TC-LSC", "TC-LSS", "TC-LSE", "TC-LSZ", "TC-LSN",
+        "TC-LSJ", "TC-LSF", "TC-LSR", "TC-LSP", "TC-LSM", "TC-LSB", "TC-LSL", "TC-IST", "TC-LSY", "TC-LSD",
+        "TC-LST", "TC-LSA", "TC-LSU", "TC-LSH", "TC-LSV", "TC-LSG", "ZA-BEL", "TC-LBK", "TC-JPC", "TC-JPD",
+        "TC-JPF", "TC-JPG", "TC-JUE", "TC-JUF", "TC-JUG", "TC-JUI", "TC-JUJ", "TC-JUK", "ZA-BBC", "TC-EIA",
+        "TC-LPG", "TC-LPK", "TC-LPL", "TC-LPM", "TC-LPO", "TC-JMM", "TC-JMN", "TC-JSH", "VT-ITD", "VT-ITA",
+        "VT-IZS", "TC-LBJ", "TC-NDA", "TC-NDB", "TC-NDH", "TC-LPP", "4564", "4K-AZ83", "5A-LAK", "5A-LAQ",
+        "5A-ONL", "5A-ONO", "9H-FHA", "9H-FHB", "9H-FHY", "9H-SLD", "9H-SLE", "9H-SLF", "9H-SLI", "9H-SLJ",
+        "9H-SLK", "9K-ALE", "9K-ALF", "9K-ALG", "9K-CAI", "9K-CAJ", "9K-CAK", "9K-CAL", "9K-CAM", "9K-CAN",
+        "9K-CAO", "9K-CAP", "9K-CAR", "9K-CAU", "A320-CFM", "A6-ABM", "A6-ABP", "A6-ABQ", "A6-ABR", "A6-ABS",
+        "A6-ABT", "A6-ABU", "A6-ANA", "A6-ANB", "A6-ANC", "A6-ANE", "A6-ANI", "A6-ANL", "A6-ANM", "A6-ANN",
+        "A6-ANO", "A6-ANP", "A6-ANQ", "A6-ANR", "A6-ANS", "A6-ANT", "A6-ANU", "A6-ANV", "A6-ANW", "A6-ANX",
+        "A6-ANY", "A6-ANZ", "A6-AOA", "A6-AOB", "A6-AOC", "A6-AOD", "A6-AOE", "A6-AOF", "A6-AOH", "A6-AOI",
+        "A6-AOJ", "A6-AOK", "A6-AOM", "A6-AON", "A6-AOO", "A6-AOP", "A6-AOQ", "A6-AOR", "A6-AOS", "A6-AOT",
+        "A6-AOU", "A6-AOV", "A6-AOW", "A6-AOX", "A6-AOY", "A6-AOZ", "A6-AQA", "A6-AQB", "A6-AQG", "A6-AQH",
+        "A6-AUA", "A6-AUB", "A6-AUC", "A6-AUD", "A6-AUE", "A6-AUF", "A6-AUG", "A6-AUI", "A6-AUJ", "A6-AUK",
+        "A7-LAB", "A7-LAC", "A9C-AP", "A9C-AQ", "AP-BMX", "AP-BNU", "AP-BNV", "AP-BOO", "AP-BOP", "AP-BOQ",
+        "AP-BPF", "AP-EDA", "AP-EDD", "AP-EDG", "AP-EDH", "CN-NMF", "CN-NMG", "CN-NMH", "CN-NMI", "CN-NMJ",
+        "CN-NMK", "CN-NML", "CN-NMM", "CN-NMN", "CN-NMO", "CN-NMP", "CN-NMQ", "CN-NMR", "EC-ISI", "EC-KMI",
+        "EC-MBK", "EC-NNY", "EC-NNZ", "EC-NOL", "EC-NOM", "EC-NON", "EC-NOP", "EC-NOQ", "EC-NOR", "EC-NOS",
+        "EC-NOY", "EC-NPB", "EC-NPC", "EC-NQM", "EC-NQN", "EC-NTL", "EC-NTM", "EC-NTU", "EC-NUO", "EC-NUP",
+        "EC-OEH", "EC-OEI", "EC-OJT", "EI-HJI", "EK-YRA", "EK-YRB", "EK-YRC", "ES-SAA", "ES-SAB", "ES-SAD",
+        "ES-SAX", "HB-JLP", "HZ-AS13", "HZ-AS14", "HZ-AS15", "HZ-AS17", "HZ-AS18", "HZ-AS19", "HZ-AS20", "HZ-AS21",
+        "HZ-AS22", "HZ-AS23", "HZ-AS32", "HZ-AS42", "HZ-AS52", "HZ-AS53", "HZ-AS55", "HZ-AS56", "HZ-FAA", "HZ-FAB",
+        "HZ-FAD", "HZ-FAE", "HZ-FAK", "HZ-NS88", "LZ-AWI", "LZ-AWK", "M-ABNM", "M-ABNP", "M-ABNR", "M-ABNU",
+        "M-ABOP", "MSN 4376", "MSN03974", "MSN2776", "MSN3218", "N786PB", "OE-IPN", "OE-IZI", "OO-SNE", "PK-BKT",
+        "PK-GLG", "PK-GLI", "PK-GLK", "PK-GLL", "PK-GLM", "PK-GLN", "PK-GLO", "PK-GLP", "PK-GLQ", "PK-GLR",
+        "PK-GLS", "PK-GLT", "PK-GLU", "PK-GLV", "PK-GLW", "PK-GLX", "PK-GLY", "PK-GLZ", "PK-GQA", "PK-GQC",
+        "PK-GQD", "PK-GQE", "PK-GQF", "PK-GQG", "PK-GQH", "PK-GQI", "PK-GQJ", "PK-GQK", "PK-GQL", "PK-GQM",
+        "PK-GQN", "PK-GQO", "PK-GQP", "PK-GQQ", "PK-GQR", "PK-GQS", "PK-GQT", "PK-GQU", "PK-PWA", "PK-PWC",
+        "PK-PWD", "PK-PWE", "PK-PWF", "PK-PWG", "PK-PWH", "PK-PWI", "PK-PWJ", "PK-PWK", "PK-PWL", "PK-PWM",
+        "PK-TLB", "PK-TLC", "PK-TLD", "PK-TLF", "SA-ONB", "SU-AAB", "SU-AAD", "SU-AAE", "SU-AAF", "SU-AAI",
+        "SU-BQK", "SU-BQM", "SU-NMG", "SU-NML", "SU-NMR", "T7-MRB", "TC-ABL", "TC-DCA", "TC-DCB", "TC-DCC",
+        "TC-DCD", "TC-DCE", "TC-DCF", "TC-DCG", "TC-DCH", "TC-DCI", "TC-DCJ", "TC-DCL", "TC-DCM", "TC-FBH",
+        "TC-FBO", "TC-FBV", "TC-FHC", "TC-FHF", "TC-FHI", "TC-FHK", "TC-FHL", "TC-FHN", "TC-FHP", "TC-FHY",
+        "UR-AJA", "UR-AJD", "VP-BWF", "VP-CPE", "VP-CPI", "VP-CQL", "VP-CXC", "VP-CXD", "VP-CXE", "VP-CXF",
+        "VP-CXG", "VP-CXH", "VP-CXI", "VP-CXJ", "VP-CXK", "VP-CXL", "VP-CXM", "VP-CXN", "VP-CXO", "VP-CXP",
+        "VP-CXQ", "VP-CXR", "VP-CXS", "VP-CXT", "VP-CXV", "VP-CXW", "VP-CXX", "VP-CXY", "VP-CXZ", "VP-CYC",
+        "VP-CYD", "VP-CZQ", "VT-AMD", "VT-APJ", "VT-ATB", "VT-ATF", "VT-ATQ", "VT-BKK", "VT-BOM", "VT-EDC",
+        "VT-EDD", "VT-EDE", "VT-EDF", "VT-EXA", "VT-EXB", "VT-EXC", "VT-EXD", "VT-EXE", "VT-GWH", "VT-HKG",
+        "VT-HYD", "VT-IDX", "VT-IDY", "VT-IMP", "VT-IXR", "VT-JPR", "VT-JRT", "VT-KOC", "VT-KTM", "VT-KUL",
+        "VT-MLE", "VT-NAG", "VT-PNQ", "VT-RED", "VT-VNS", "VT-VTZ", "YI-ARB", "YL-LCT", "YL-LDM", "YL-LDW",
+        "YR-ADA", "9K-CAQ", "9K-CBA", "9K-CBB", "9K-CBD", "9K-CBE", "9K-CBF", "9K-CBG", "9K-CBH", "9K-CBI",
+        "A320-NEO", "HZ-NS22", "HZ-NS23", "HZ-NS24", "HZ-NS25", "HZ-NS26", "HZ-NS27", "HZ-NS28", "HZ-NS29", "HZ-NS32",
+        "HZ-NS33", "HZ-NS34", "HZ-NS35", "HZ-NS36", "HZ-NS37", "HZ-NS38", "HZ-NS39", "HZ-NS42", "HZ-NS43", "HZ-NS44",
+        "HZ-NS45", "HZ-NS46", "HZ-NS47", "HZ-NS48", "HZ-NS49", "HZ-NS52", "HZ-NS54", "HZ-NS55", "HZ-NS56", "HZ-NS57",
+        "HZ-NS58", "HZ-NS59", "HZ-NS62", "HZ-NS63", "HZ-NS64", "HZ-NS65", "HZ-NS66", "HZ-NS67", "HZ-NS68", "HZ-NS69",
+        "HZ-NS72", "HZ-NS73", "HZ-NS74", "HZ-NS75", "HZ-NS76", "HZ-NS77", "HZ-NS78", "HZ-NS79", "HZ-NS82", "HZ-NS83",
+        "HZ-NS84", "HZ-NS85", "HZ-NS86", "HZ-NS87", "PK-GTA", "PK-GTC", "PK-GTD", "PK-GTE", "PK-GTF", "PK-GTG",
+        "PK-GTH", "PK-GTI", "PK-GTJ", "PK-GTK", "PK-TLA", "TC-NBA", "TC-NBB", "TC-NBC", "TC-NBD", "TC-NBE",
+        "TC-NBF", "TC-NBG", "TC-NBH", "TC-NBI", "TC-NBJ", "TC-NBK", "TC-NBL", "TC-NBM", "TC-NBN", "TC-NBO",
+        "TC-NBP", "TC-NBR", "TC-NBS", "TC-NBT", "TC-NBU", "TC-NBV", "TC-NBY", "TC-NBZ", "TC-NCA", "TC-NCB",
+        "TC-NCC", "TC-NCD", "TC-NCE", "TC-NCF", "TC-NCG", "TC-NCH", "TC-NCI", "TC-NCJ", "TC-NCK", "TC-NCL",
+        "TC-NCM", "TC-NCN", "TC-NCO", "TC-NCP", "TC-NCR", "TC-NCS", "TC-NCT", "TC-NCU", "TC-NCV", "TC-NCY",
+        "TC-NCZ", "TC-RDC", "TC-RDE", "VT-ATD", "VT-ATE", "VT-ATG", "VT-ATH", "VT-ATJ", "VT-CID", "VT-CIE",
+        "VT-CIF", "VT-CIG", "VT-CIH", "VT-CIM", "VT-CIN", "VT-CIO", "VT-CIP", "VT-CIQ", "VT-EXF", "VT-EXG",
+        "VT-EXH", "VT-EXI", "VT-EXJ", "VT-EXK", "VT-EXL", "VT-EXM", "VT-EXN", "VT-EXO", "VT-EXP", "VT-EXQ",
+        "VT-EXR", "VT-EXS", "VT-EXT", "VT-EXU", "VT-EXV", "2-ADAE", "2-BDAE", "2-TWDC", "2-TWGN", "2-TWGO",
+        "A320-PW", "EI-KBH", "EI-KBI", "EI-KBJ", "EI-KBK", "EI-KBL", "EI-KBM", "EI-KBP", "EI-KBT", "EI-KBU",
+        "EI-KBV", "EI-KFA", "EI-KFB", "EI-KFC", "EI-KFD", "EI-KIA", "EI-KIB", "EI-KIC", "EI-KID", "EI-KIE",
+        "P4-KBI", "P4-KBJ", "VP-CIR", "VP-CIU", "VP-CKN", "VT-IJB", "VT-IJE", "VT-ITC", "VT-ITE", "VT-ITF",
+        "VT-ITG", "VT-ITI", "VT-IVH", "VT-IVL", "VT-IVO", "VT-IZO", "VT-IZQ", "VT-IZX", "VT-IZY", "VT-IZZ",
+        "3943-OEIFJ", "4813", "4X-ABF", "4X-ABG", "4X-ABI", "4X-ABS", "4X-ABT", "4X-ABW", "9H-AML", "9H-GKJ",
+        "9H-GKK", "9H-SWM", "A320-V25", "A7-AHQ", "A7-AHR", "A7-AHS", "A7-AHU", "AP-BOA", "AP-BOB", "AP-BOC",
+        "AP-BOR", "AP-BOS", "EC-MVN", "EI-GHY", "EI-KBA", "EI-KBB", "EI-KBC", "EI-KBD", "EI-KBE", "EI-KBF",
+        "EI-KBG", "EI-KBN", "EI-KBO", "EI-KBX", "EI-KBY", "EI-KBZ", "EI-KDA", "EI-KFE", "EI-KFF", "EI-KFG",
+        "EI-VAS", "ER-00005", "ER-00006", "ER-00007", "ER-AXP", "ES-SAG", "ES-SAM", "ES-SAY", "ES-SAZ", "G-EUUN",
+        "G-EUYF", "JY-AYQ", "JY-AYR", "JY-AYS", "JY-AYU", "JY-AYW", "JY-AYX", "LY-NVJ", "MSN 3676", "MSN 4934",
+        "MSN 5036", "MSN5076", "OE-IET", "OE-IFJ", "OE-IFM", "OE-IKJ", "OE-IPR", "OE-ISU", "OE-ITG", "OE-ITJ",
+        "OE-ITK", "OE-ITM", "OE-IUX", "OE-IWK", "OE-LCH", "OE-LES", "OE-LOB", "OE-LOM", "OE-LOT", "P4-KBA",
+        "P4-KBB", "P4-KBC", "P4-KBD", "P4-KBE", "P4-KBF", "P4-KBG", "P4-KBN", "P4-KDA", "P4-KDB", "P4-NAS",
+        "P4-OAS", "P4-VAS", "PK-GLE", "SU-BQJ", "SX-DGX", "TC-AGO", "TC-AGU", "TC-ATK", "TC-ATT", "TC-FBR",
+        "TC-FHG", "TC-FHM", "TC-GMA", "TC-OBG", "TC-OBS", "TC-ODA", "TC-ODB", "TC-ODC", "TC-ODD", "TC-ODE",
+        "UR-AJB", "UR-AJC", "VP-CCE", "VP-CEK", "VP-CLP", "VP-CNE", "VP-CNF", "VT- IFW", "VT-IAL", "VT-IDL",
+        "VT-IDQ", "VT-IEG", "VT-IEI", "VT-IEJ", "VT-IEK", "VT-IEL", "VT-IEN", "VT-IEP", "VT-IEQ", "VT-IER",
+        "VT-IET", "VT-IFC", "VT-IFF", "VT-IFJ", "VT-IFO", "VT-IFT", "VT-IFU", "VT-IFW", "VT-IFX", "VT-IFY",
+        "VT-IHK", "VT-IHL", "VT-IHR", "VT-INZ", "VT-TTJ", "VT-TTK", "VT-TTL", "VT-TTN", "YL-LDI", "YL-LDJ",
+        "YL-LDK", "YL-LDL", "YL-LDN", "YL-LDT", "YR-FIA", "YU-APH", "YU-APO", "9H-CGB", "9H-SLC", "A321-CFM",
+        "A6-AND", "A6-ATG", "A6-ATH", "A6-ATI", "AP-BMM", "AP-BMN", "AP-BMO", "AP-BMP", "AP-BMW", "HZ-ASJ",
+        "HZ-ASK", "HZ-ASL", "PK-TLG", "TC-ATB", "TC-ATE", "TC-ATF", "TC-ATR", "TC-ATY", "TC-ATZ", "TC-GRC",
+        "VQ-BOD", "VT-PPH", "VT-PPI", "VT-PPJ", "VT-PPK", "VT-PPL", "VT-PPM", "VT-PPO", "VT-PPQ", "VT-PPT",
+        "VT-PPU", "VT-PPV", "VT-PPW", "VT-PPX", "9265", "9K-CBC", "A6-ATA", "A6-ATB", "A6-ATC", "A6-ATD",
+        "A6-ATE", "A6-ATF", "AP-BOD", "AP-BOE", "EI-KGH", "HZ-NS53", "TC-GRE", "TC-OED", "TC-OEE", "TC-RBA",
+        "TC-RBB", "TC-RBC", "TC-RBD", "TC-RBE", "TC-RBF", "TC-RBG", "TC-RBH", "TC-RBI", "TC-RBJ", "TC-RBK",
+        "TC-RBL", "TC-RBM", "TC-RBN", "TC-RBO", "TC-RBP", "TC-RBR", "TC-RBS", "TC-RBT", "TC-RBU", "TC-RBV",
+        "TC-RBY", "TC-RBZ", "TC-RDA", "TC-RDB", "TC-RDD", "TC-RDF", "TC-RDG", "TC-RDH", "TC-RDI", "TC-RDJ",
+        "TC-RDK", "TC-RDL", "TC-RDM", "TC-RDN", "TC-RDO", "TC-RDP", "TC-RDR", "TC-RDS", "TC-RDT", "TC-RDU",
+        "TC-RDV", "TC-RDY", "TC-RDZ", "TC-RFA", "TC-RFB", "TC-RFC", "TC-RFD", "TC-RFE", "TC-RFF", "TC-RFG",
+        "TC-RFH", "TC-RFI", "TC-RFJ", "TC-RFK", "TC-RFL", "TC-RFM", "A321NEO-PW", "EI-KBR", "EI-KBS", "EI-KBW",
+        "EI-KDC", "EI-KDD", "EI-KDE", "EI-KDF", "EI-KDG", "EI-KGA", "EI-KGB", "EI-KGC", "EI-KGD", "EI-KGE",
+        "EI-KGF", "EI-KGG", "EI-KGI", "EI-KGJ", "EI-KGK", "G-WUKN", "P4-KDD", "P4-KDF", "P4-KGA", "P4-KGB",
+        "T7-ME6", "VT-IUB", "VT-IUC", "9H-CGN", "9H-SLG", "9H-SLL", "9H-SLM", "A321-V25", "EI-KDB", "EI-KDI",
+        "JY-AYT", "JY-AYV", "LY-BLX", "LZ-DAB", "LZ-DAC", "LZ-HEA", "N32109", "N725AV", "SU-BQL", "SU-BQN",
+        "TC-AGG", "TC-AGI", "TC-AGS", "TC-ATH", "TC-ETF", "TC-ETH", "TC-ETJ", "TC-ETM", "TC-ETV", "TC-GPA",
+        "TC-GPB", "TC-GPC", "TC-GPD", "TC-GPE", "TC-GPF", "TC-GPG", "TC-MYA", "TC-MYB", "TC-OBK", "TC-OBU",
+        "TC-OBV", "TC-OBY", "TC-OEA", "TC-OEC", "TC-ONJ", "TC-ONS", "VP-BHN", "VP-BRD", "VQ-BRT", "YL-LCQ",
+        "YL-LCV", "YL-LDQ", "YL-LDR", "YL-LDS", "YL-LDV", "YR-FIB", "YR-FIC",
+      ],
+    };
+    const AC_TYPE_OF = {};
+    Object.entries(AC_TYPE_MAP).forEach(([t, list]) => list.forEach(a => { AC_TYPE_OF[a] = t; }));
+    let allAircrafts = Array.from(new Set([...DEFAULT_AIRCRAFTS, ...Object.keys(AC_TYPE_OF)])).sort();
     let selectedAcs = new Set(); // Multi-select AC set
 
     // Filter State
@@ -425,6 +578,7 @@
       renderAircraftChips(); // Render default 40 aircrafts instantly!
       loadFiltersFromStorage(); // Tarayıcı hafızasındaki son arama verilerini yükle
       await loadAircraftList(); // Refresh from DB if any updates
+      loadUniquePnCount();
       fetchMaterials(true);
     });
 
@@ -451,6 +605,22 @@
       }
     }
 
+    // Benzersiz PN sayısı (veritabanındaki pn_stats görünümünden)
+    let uniquePnCount = null;
+    async function loadUniquePnCount() {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/pn_stats?select=unique_pn`, { headers: HEADERS });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0 && data[0].unique_pn != null) {
+          uniquePnCount = Number(data[0].unique_pn);
+          updateStatistics();
+        }
+      } catch (e) {
+        console.warn('Benzersiz PN sayısı alınamadı:', e);
+      }
+    }
+
     // Load Distinct Aircrafts for AC Multi-Select Chips
     async function loadAircraftList() {
       try {
@@ -466,6 +636,33 @@
       } catch (e) {
         console.warn('Distinct aircrafts API warning (using default list):', e);
       }
+    }
+
+    // Tip çipleri: tıklayınca o tipteki tüm uçakları seçer/kaldırır
+    function renderAcTypeChips() {
+      const container = document.getElementById('acTypeChips');
+      if (!container) return;
+      container.innerHTML = '';
+      Object.entries(AC_TYPE_MAP).forEach(([type, list]) => {
+        const available = list.filter(ac => allAircrafts.includes(ac));
+        if (available.length === 0) return;
+        const allOn = available.every(ac => selectedAcs.has(ac));
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = allOn
+          ? 'px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white border border-emerald-600 shadow-sm transition active:scale-95 shrink-0'
+          : 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-200 transition active:scale-95 shadow-xs shrink-0';
+        chip.textContent = `${type.replace('Airbus ', '')} (${available.length})`;
+        chip.onclick = () => {
+          if (allOn) {
+            available.forEach(ac => selectedAcs.delete(ac));
+          } else {
+            available.forEach(ac => selectedAcs.add(ac));
+          }
+          updateAcSelectionUI();
+        };
+        container.appendChild(chip);
+      });
     }
 
     function renderAircraftChips(filterText = '') {
@@ -488,6 +685,8 @@
         return;
       }
 
+      renderAcTypeChips();
+
       filtered.forEach(ac => {
         const isSelected = selectedAcs.has(ac);
         const chip = document.createElement('button');
@@ -496,8 +695,9 @@
           ? 'px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white border border-emerald-600 shadow-sm transition active:scale-95 flex items-center space-x-1 shrink-0' 
           : 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 border border-slate-200 transition active:scale-95 shadow-xs flex items-center space-x-1 shrink-0';
         
-        chip.innerHTML = isSelected 
-          ? `<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i><span>${ac}</span>` 
+        chip.title = AC_TYPE_OF[ac] || '';
+        chip.innerHTML = isSelected
+          ? `<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i><span>${ac}</span>`
           : `<span>${ac}</span>`;
         
         chip.onclick = () => {
@@ -734,6 +934,7 @@
       resultCountText.innerHTML = `
         <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
         <span>Toplam <strong>${totalRecords.toLocaleString('tr-TR')}</strong> malzeme</span>
+        ${uniquePnCount !== null ? `<span class="text-slate-300">•</span><span><strong>${uniquePnCount.toLocaleString('tr-TR')}</strong> benzersiz PN</span>` : ''}
       `;
       pageInfoText.textContent = `${shownCount.toLocaleString('tr-TR')} gösteriliyor`;
     }
