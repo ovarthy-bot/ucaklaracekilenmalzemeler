@@ -423,6 +423,7 @@
       lucide.createIcons();
       setupEventListeners();
       renderAircraftChips(); // Render default 40 aircrafts instantly!
+      loadFiltersFromStorage(); // Tarayıcı hafızasındaki son arama verilerini yükle
       await loadAircraftList(); // Refresh from DB if any updates
       fetchMaterials(true);
     });
@@ -846,6 +847,71 @@
       }
     }
 
+    // Browser LocalStorage Persistence (Son Aratılan Verileri Saklama)
+    const STORAGE_KEY = 'aviation_catalog_last_filters';
+
+    function saveFiltersToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+      } catch (e) {
+        console.warn('Could not save to localStorage:', e);
+      }
+    }
+
+    function loadFiltersFromStorage() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return false;
+        const parsed = JSON.parse(saved);
+        if (!parsed || typeof parsed !== 'object') return false;
+
+        filters.quickSearch = parsed.quickSearch || '';
+        filters.pn = parsed.pn || '';
+        filters.pn_description = parsed.pn_description || '';
+        filters.ac = Array.isArray(parsed.ac) ? parsed.ac : [];
+        filters.task_card = parsed.task_card || '';
+        filters.task_card_desc = parsed.task_card_desc || '';
+        filters.emp_name = parsed.emp_name || '';
+        filters.date_start = parsed.date_start || '';
+        filters.date_end = parsed.date_end || '';
+
+        // DOM elemanlarını güncelle
+        if (filters.quickSearch) {
+          quickSearchInput.value = filters.quickSearch;
+          document.getElementById('clearQuickSearch').classList.remove('hidden');
+          quickSearchBar.classList.remove('hidden');
+        }
+
+        document.getElementById('filter_pn').value = filters.pn;
+        document.getElementById('filter_pn_description').value = filters.pn_description;
+        document.getElementById('filter_task_card').value = filters.task_card;
+        document.getElementById('filter_task_card_desc').value = filters.task_card_desc;
+        document.getElementById('filter_emp_name').value = filters.emp_name;
+        document.getElementById('filter_date_start').value = filters.date_start;
+        document.getElementById('filter_date_end').value = filters.date_end;
+
+        // Çoklu uçak seçimini geri yükle
+        selectedAcs.clear();
+        filters.ac.forEach(a => selectedAcs.add(a));
+        updateAcSelectionUI();
+
+        updateFilterInputsBadge();
+        updatePillsBar();
+        return true;
+      } catch (e) {
+        console.warn('Could not load from localStorage:', e);
+        return false;
+      }
+    }
+
+    function clearFiltersFromStorage() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.warn('Could not remove from localStorage:', e);
+      }
+    }
+
     // Bottom Sheet Management
     function openFilterSheet() {
       filterSheetBackdrop.classList.remove('hidden');
@@ -874,6 +940,7 @@
       filters.date_start = document.getElementById('filter_date_start').value;
       filters.date_end = document.getElementById('filter_date_end').value;
 
+      saveFiltersToStorage(); // Hafızaya kaydet
       updateFilterInputsBadge();
       updatePillsBar();
       closeFilterSheet();
@@ -908,6 +975,7 @@
         quickSearch: ''
       };
 
+      clearFiltersFromStorage(); // Hafızayı temizle
       updateFilterInputsBadge();
       updatePillsBar();
       fetchMaterials(true);
@@ -974,7 +1042,14 @@
         activePillsContainer.appendChild(pill);
       };
 
-      if (filters.quickSearch) addPill('Arama', filters.quickSearch, () => { filters.quickSearch = ''; quickSearchInput.value = ''; fetchMaterials(true); updatePillsBar(); });
+      if (filters.quickSearch) addPill('Arama', filters.quickSearch, () => { 
+        filters.quickSearch = ''; 
+        quickSearchInput.value = ''; 
+        document.getElementById('clearQuickSearch').classList.add('hidden');
+        saveFiltersToStorage(); 
+        fetchMaterials(true); 
+        updatePillsBar(); 
+      });
       if (filters.pn) addPill('PN', filters.pn, () => { filters.pn = ''; document.getElementById('filter_pn').value = ''; applyFilters(); });
       if (filters.pn_description) addPill('Tanım', filters.pn_description, () => { filters.pn_description = ''; document.getElementById('filter_pn_description').value = ''; applyFilters(); });
       if (filters.ac && filters.ac.length > 0) {
@@ -1075,6 +1150,7 @@
 
         debounceTimer = setTimeout(() => {
           filters.quickSearch = val;
+          saveFiltersToStorage();
           updatePillsBar();
           fetchMaterials(true);
         }, 400);
@@ -1085,6 +1161,7 @@
         if (e.key === 'Enter') {
           clearTimeout(debounceTimer);
           filters.quickSearch = quickSearchInput.value.trim();
+          saveFiltersToStorage();
           updatePillsBar();
           fetchMaterials(true);
         }
@@ -1094,6 +1171,7 @@
         quickSearchInput.value = '';
         document.getElementById('clearQuickSearch').classList.add('hidden');
         filters.quickSearch = '';
+        saveFiltersToStorage();
         updatePillsBar();
         fetchMaterials(true);
       };
