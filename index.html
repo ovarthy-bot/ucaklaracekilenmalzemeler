@@ -622,6 +622,13 @@
             <p class="text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
               ${item.pn_description || 'Parça açıklaması bulunmuyor.'}
             </p>
+            ${item.task_card_desc ? `
+            <div class="mt-2 bg-blue-50/60 rounded-xl px-2.5 py-1.5 border border-blue-100/80 flex items-start space-x-2">
+              <i data-lucide="file-text" class="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5"></i>
+              <p class="text-[11px] text-slate-700 line-clamp-2 leading-tight">
+                <span class="font-bold text-blue-900">Task Card Tanımı:</span> ${item.task_card_desc}
+              </p>
+            </div>` : ''}
           </div>
 
           <!-- Bottom Metadata Row -->
