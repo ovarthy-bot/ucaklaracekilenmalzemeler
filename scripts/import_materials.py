@@ -109,7 +109,16 @@ def read_excel(path):
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb.worksheets[0]
     rows = ws.iter_rows(values_only=True)
-    header = [str(h).strip() if h is not None else "" for h in next(rows)]
+    # Basliklar ilk satirda olmayabilir (ornegin ustte "Material Detail" baslik satiri var):
+    # "PN" ve "Category" iceren ilk satiri baslik kabul et.
+    header = None
+    for r in rows:
+        h = [str(x).strip() if x is not None else "" for x in r]
+        if "PN" in h and "Category" in h:
+            header = h
+            break
+    if header is None:
+        sys.exit("Excel'de baslik satiri bulunamadi (PN / Category)")
     idx = {}
     for excel_name, db in COLUMN_MAP:
         if excel_name not in header:
